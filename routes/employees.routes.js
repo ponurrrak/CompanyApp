@@ -1,69 +1,94 @@
 const express = require('express');
 const router = express.Router();
 const ObjectId = require('mongodb').ObjectId;
-const collection = 'employees';
+const Employee = require('../models/employee.model');
 
-router.get('/', (req, res) => {
-  req.db.collection(collection).find().toArray((err, data) => {
-    if(err) {
-      res.status(500).json({ message: err });
-    } else {
-      res.json(data);
-    }
-  });
+router.get('/', async (req, res) => {
+  try {
+    res.json(await Employee.find());
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
 });
 
-router.get('/random', (req, res) => {
-  req.db.collection(collection).aggregate([{$sample: { size: 1 }}]).toArray((err, data) => {
-    if(err) {
-      res.status(500).json({ message: err });
+router.get('/random', async (req, res) => {
+  try {
+    const count = await Employee.countDocuments();
+    const randNum = Math.floor(Math.random() * count);
+    const randItem = await Employee.findOne().skip(randNum);
+    if(randItem) {
+      res.json(randItem);
     } else {
-      res.json(data[0]);
-    }
-  });
-});
-
-router.get('/:id', (req, res) => {
-  req.db.collection(collection).findOne({ _id: ObjectId(req.params.id) }, (err, data) => {
-    if(err) {
-      res.status(500).json({ message: err });
-    } else if(!data) {
       res.status(404).json({ message: 'Not found' });
-    } else {
-      res.json(data);
     }
-  });
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
 });
 
-router.post('/', (req, res) => {
+router.get('/:id', async (req, res) => {
+  let itemFound;
+  try {
+    if(ObjectId.isValid(req.params.id)) {
+      itemFound = await Employee.findById(req.params.id);
+    }
+    if(itemFound) {
+      res.json(itemFound);
+    } else {
+      res.status(404).json({ message: 'Not found' });
+    }
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
+});
+
+router.post('/', async (req, res) => {
   const { firstName, lastName, department } = req.body;
-  req.db.collection(collection).insertOne({ firstName, lastName, department }, err => {
-    if(err) {
-      res.status(500).json({ message: err });
-    } else {
-      res.json({ message: 'OK' });
-    }
-  });
+  try {
+    const newEmployee = new Employee({ firstName, lastName, department });
+    await newEmployee.save();
+    res.json({ message: 'OK' });
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
 });
 
-router.put('/:id', (req, res) => {
-  req.db.collection(collection).updateOne({ _id: ObjectId(req.params.id) }, { $set: { ...req.body } }, err => {
-    if(err) {
-      res.status(500).json({ message: err });
-    } else {
-      res.json({ message: 'OK' });
+router.put('/:id', async (req, res) => {
+  const { firstName, lastName, department } = req.body;
+  let itemFound;
+  try {
+    if(ObjectId.isValid(req.params.id)) {
+      itemFound = await Employee.findById(req.params.id);
     }
-  });
+    if(itemFound) {
+      itemFound.firstName = firstName ? firstName : itemFound.firstName;
+      itemFound.lastName = lastName ? lastName : itemFound.lastName;
+      itemFound.department = department ? department : itemFound.department;
+      await itemFound.save();
+      res.json({ message: 'OK' });
+    } else {
+      res.status(404).json({ message: 'Not found' });
+    }
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
 });
 
-router.delete('/:id', (req, res) => {
-  req.db.collection(collection).deleteOne({ _id: ObjectId(req.params.id) }, err => {
-    if(err) {
-      res.status(500).json({ message: err });
-    } else {
-      res.json({ message: 'OK' });
+router.delete('/:id', async (req, res) => {
+  let itemFound;
+  try {
+    if(ObjectId.isValid(req.params.id)) {
+      itemFound = await Employee.findById(req.params.id);
     }
-  });
+    if(itemFound) {
+      await itemFound.remove();
+      res.json({ message: 'OK' });
+    } else {
+      res.status(404).json({ message: 'Not found' });
+    }
+  } catch(err) {
+    res.status(500).json({ message: err });
+  }
 });
 
 module.exports = router;
