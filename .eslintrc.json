@@ -37,6 +37,9 @@
         "__dirname": "readonly",
         "describe": "readonly",
         "it": "readonly",
-        "after": "readonly"   
+        "after": "readonly",
+        "before": "readonly",
+        "beforeEach": "readonly",
+        "afterEach": "readonly"         
     }
 }
